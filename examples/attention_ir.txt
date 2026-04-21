@@ -1,0 +1,22 @@
+# Example IR: Simplified Attention
+# Inputs: Q [32, 64], K [32, 64], V [32, 64]
+# Output: out [32, 64]
+
+Op 0: input
+  shape: [32,64]
+
+Op 1: input
+  shape: [32,64]
+
+Op 2: input
+  shape: [32,64]
+
+Op 3: flash_attention
+  inputs: [0,1,2]
+  shape: [32,64]
+  attr: causal=1
+  attr: scale=0.125
+
+Op 4: output
+  inputs: [3]
+  shape: [32,64]

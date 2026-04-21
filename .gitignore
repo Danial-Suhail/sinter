@@ -1,0 +1,44 @@
+# Build directories
+/build/
+/cmake-build-*/
+/out/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.lib
+*.exe
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+*.cmake
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.user
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+
+# Test artifacts
+*.gcov
+*.gcda
+*.gcno
+coverage/
+
+# Misc
+.clang-format
+compile_commands.json
+.tags

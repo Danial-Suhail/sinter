@@ -1,0 +1,28 @@
+# Example IR: Fused Operations (Add + LayerNorm)
+# Input: X [1024, 768]
+# Output: normalized [1024, 768]
+
+Op 0: input
+  shape: [1024,768]
+
+Op 1: input
+  shape: [1024,768]
+
+Op 2: add
+  inputs: [0,1]
+  shape: [1024,768]
+
+Op 3: input
+  shape: [768]
+
+Op 4: input
+  shape: [768]
+
+Op 5: layernorm
+  inputs: [2,3,4]
+  shape: [1024,768]
+  attr: eps=1e-5
+
+Op 6: output
+  inputs: [5]
+  shape: [1024,768]

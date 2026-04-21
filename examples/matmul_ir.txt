@@ -1,0 +1,17 @@
+# Example IR: Matrix Multiplication
+# Input: A [16, 16, 16], B [16, 16]
+# Output: C [16, 16]
+
+Op 0: input
+  shape: [16,16,16]
+
+Op 1: input
+  shape: [16,16]
+
+Op 2: matmul
+  inputs: [0,1]
+  shape: [16,16]
+
+Op 3: output
+  inputs: [2]
+  shape: [16,16]
