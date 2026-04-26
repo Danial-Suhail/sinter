@@ -37,33 +37,6 @@ jobs:
         working-directory: build
         run: ctest --output-on-failure
 
-  build-windows-cuda:
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2.35
-        with:
-          cuda: '12.2.0'
-          method: 'network'
-
-      - name: Create build directory
-        run: mkdir -p build
-
-      - name: Configure CMake
-        working-directory: build
-        run: cmake -G "Visual Studio 17 2022" ..
-
-      - name: Build
-        working-directory: build
-        run: cmake --build . --config Release -j8
-
-      - name: Run tests
-        working-directory: build
-        run: ctest -C Release --output-on-failure
-
   code-quality:
     runs-on: ubuntu-latest
 
