@@ -143,6 +143,7 @@ namespace sinter {
         std::istringstream iss(ir_text);
         std::string line;
 
+        bool has_current_op = false;
         size_t current_op_id = 0;
         OpType current_type = OpType::Input;
         std::vector<size_t> current_inputs;
@@ -150,7 +151,11 @@ namespace sinter {
         std::vector<OpAttribute> current_attrs;
 
         auto flush_op = [&]() {
-            if (current_op_id > 0 || current_type != OpType::Input) {
+            if (!has_current_op) {
+                return;
+            }
+
+            {
                 Op op(current_op_id, current_type, current_inputs, current_shape);
                 for (const auto& attr : current_attrs) {
                     op.add_attribute(attr.key, attr.value);
@@ -159,7 +164,7 @@ namespace sinter {
                 current_inputs.clear();
                 current_attrs.clear();
             }
-            current_op_id++;
+            has_current_op = false;
         };
 
         while (std::getline(iss, line)) {
@@ -177,6 +182,7 @@ namespace sinter {
                 current_op_id = std::stoul(tokens[1]);
                 current_type = str_to_optype(tokens[2]);
                 current_shape = Shape{};
+                has_current_op = true;
                 continue;
             }
 

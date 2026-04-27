@@ -28,7 +28,7 @@ TEST(ShapeTest, NumElements) {
     Shape s2({1});
     EXPECT_EQ(s2.numel(), 1);
 
-    Shape s3({});
+    Shape s3;
     EXPECT_EQ(s3.numel(), 1);
 }
 
@@ -59,7 +59,7 @@ TEST(OpTest, Creation) {
 }
 
 TEST(OpTest, Attributes) {
-    Op op(0, OpType::MatMul, {}, Shape({}));
+    Op op(0, OpType::MatMul, {}, Shape());
     op.add_attribute("tile_m", "16");
     op.add_attribute("tile_n", "16");
 
@@ -69,13 +69,13 @@ TEST(OpTest, Attributes) {
 }
 
 TEST(OpTest, OpTypeString) {
-    Op op_matmul(0, OpType::MatMul, {}, Shape({}));
+    Op op_matmul(0, OpType::MatMul, {}, Shape());
     EXPECT_EQ(op_matmul.op_type_str(), "matmul");
 
-    Op op_add(1, OpType::Add, {}, Shape({}));
+    Op op_add(1, OpType::Add, {}, Shape());
     EXPECT_EQ(op_add.op_type_str(), "add");
 
-    Op op_gelu(2, OpType::GELU, {}, Shape({}));
+    Op op_gelu(2, OpType::GELU, {}, Shape());
     EXPECT_EQ(op_gelu.op_type_str(), "gelu");
 }
 

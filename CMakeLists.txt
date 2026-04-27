@@ -1,10 +1,23 @@
 cmake_minimum_required(VERSION 3.20)
+
+# CUDA 12.2 rejects GCC > 12 in host compilation mode.
+# In WSL/Ubuntu environments where GCC 13 is default, prefer GCC 12 when available.
+if(UNIX AND NOT APPLE)
+    if(NOT DEFINED CMAKE_CXX_COMPILER AND EXISTS "/usr/bin/g++-12")
+        set(CMAKE_CXX_COMPILER "/usr/bin/g++-12" CACHE FILEPATH "Preferred C++ compiler" FORCE)
+    endif()
+    if(NOT DEFINED CMAKE_CUDA_HOST_COMPILER AND EXISTS "/usr/bin/gcc-12")
+        set(CMAKE_CUDA_HOST_COMPILER "/usr/bin/gcc-12" CACHE FILEPATH "Preferred CUDA host compiler" FORCE)
+    endif()
+endif()
+
 project(sinter CUDA CXX)
 
 # C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -72,45 +85,51 @@ target_link_libraries(sinter_compiler sinter_core)
 # Testing
 enable_testing()
 
-# Google Test - optional (comment out to disable tests)
 option(ENABLE_TESTS "Enable building tests" OFF)
 
 if(ENABLE_TESTS)
     include(FetchContent)
+    set(FETCHCONTENT_BASE_DIR "$ENV{HOME}/.cache/sinter_fetchcontent")
+    file(MAKE_DIRECTORY "${FETCHCONTENT_BASE_DIR}")
+    if(WIN32)
+        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    endif()
     FetchContent_Declare(googletest
-        URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+        URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
     )
     FetchContent_MakeAvailable(googletest)
 
+    include(GoogleTest)
+
     # Unit tests
     add_executable(ir_test test/unit/ir_test.cpp)
-    target_link_libraries(ir_test sinter_core gtest gtest_main)
-    add_test(NAME IR_Test COMMAND ir_test)
+    target_link_libraries(ir_test PRIVATE sinter_core GTest::gtest_main)
+    gtest_discover_tests(ir_test)
 
     add_executable(passes_test test/unit/passes_test.cpp)
-    target_link_libraries(passes_test sinter_core gtest gtest_main)
-    add_test(NAME Passes_Test COMMAND passes_test)
+    target_link_libraries(passes_test PRIVATE sinter_core GTest::gtest_main)
+    gtest_discover_tests(passes_test)
 
     add_executable(codegen_test test/unit/codegen_test.cpp)
-    target_link_libraries(codegen_test sinter_core gtest gtest_main)
-    add_test(NAME Codegen_Test COMMAND codegen_test)
+    target_link_libraries(codegen_test PRIVATE sinter_core GTest::gtest_main)
+    gtest_discover_tests(codegen_test)
 
     add_executable(autotuner_test test/unit/autotuner_test.cpp)
-    target_link_libraries(autotuner_test sinter_core gtest gtest_main)
-    add_test(NAME Autotuner_Test COMMAND autotuner_test)
+    target_link_libraries(autotuner_test PRIVATE sinter_core GTest::gtest_main)
+    gtest_discover_tests(autotuner_test)
 
     # Integration tests
     add_executable(e2e_cpu_matmul_test test/integration/e2e_cpu_matmul_test.cpp)
-    target_link_libraries(e2e_cpu_matmul_test sinter_core gtest gtest_main)
-    add_test(NAME E2E_CPU_MatMul COMMAND e2e_cpu_matmul_test)
+    target_link_libraries(e2e_cpu_matmul_test PRIVATE sinter_core GTest::gtest_main)
+    gtest_discover_tests(e2e_cpu_matmul_test)
 
     add_executable(e2e_matmul_test test/integration/e2e_matmul_test.cpp)
-    target_link_libraries(e2e_matmul_test sinter_core gtest gtest_main)
-    add_test(NAME E2E_MatMul COMMAND e2e_matmul_test)
+    target_link_libraries(e2e_matmul_test PRIVATE sinter_core GTest::gtest_main)
+    gtest_discover_tests(e2e_matmul_test)
 
     add_executable(e2e_attention_test test/integration/e2e_attention_test.cpp)
-    target_link_libraries(e2e_attention_test sinter_core gtest gtest_main)
-    add_test(NAME E2E_Attention COMMAND e2e_attention_test)
+    target_link_libraries(e2e_attention_test PRIVATE sinter_core GTest::gtest_main)
+    gtest_discover_tests(e2e_attention_test)
 
     # Benchmark executable
     add_executable(benchmark_suite test/integration/benchmark_suite.cpp)
