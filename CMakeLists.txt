@@ -27,6 +27,48 @@ endif()
 # Find CUDA
 find_package(CUDAToolkit REQUIRED)
 
+# =============================================================================
+# LibTorch Configuration
+# =============================================================================
+# LibTorch is used for benchmarking Sinter against PyTorch
+# It provides torch::matmul, torch::add, etc. as reference implementations
+#
+# KNOWN ISSUE: Conda's PyTorch has CMake integration issues with FindCUDA.
+# For now, LibTorch support is disabled by default. We'll benchmark against
+# cuBLAS first (which works), then add LibTorch support later.
+#
+# To try enabling manually:
+#   cmake -DENABLE_LIBTORCH=ON -DCMAKE_PREFIX_PATH=/path/to/libtorch ...
+# =============================================================================
+option(ENABLE_LIBTORCH "Enable LibTorch for benchmarking (experimental)" OFF)
+
+if(ENABLE_LIBTORCH)
+    # Set CUDA paths for the old FindCUDA module that Caffe2 uses
+    if(CUDAToolkit_FOUND)
+        get_filename_component(_cuda_include_parent "${CUDAToolkit_INCLUDE_DIRS}" DIRECTORY)
+        get_filename_component(_cuda_target_parent "${_cuda_include_parent}" DIRECTORY)
+        get_filename_component(_cuda_root "${_cuda_target_parent}" DIRECTORY)
+        
+        set(CUDA_TOOLKIT_ROOT_DIR "${_cuda_root}" CACHE PATH "CUDA Toolkit root" FORCE)
+        set(CUDA_INCLUDE_DIRS "${CUDAToolkit_INCLUDE_DIRS}" CACHE PATH "CUDA include dirs" FORCE)
+        
+        message(STATUS "Setting CUDA_TOOLKIT_ROOT_DIR for Caffe2: ${CUDA_TOOLKIT_ROOT_DIR}")
+    endif()
+    
+    find_package(Torch QUIET)
+    
+    if(Torch_FOUND)
+        message(STATUS "Found LibTorch: ${TORCH_INCLUDE_DIRS}")
+        set(SINTER_HAS_LIBTORCH TRUE)
+    else()
+        message(WARNING "LibTorch not found or failed to configure.")
+        set(SINTER_HAS_LIBTORCH FALSE)
+    endif()
+else()
+    message(STATUS "LibTorch disabled. Will benchmark against cuBLAS only.")
+    set(SINTER_HAS_LIBTORCH FALSE)
+endif()
+
 # Include directories
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CUDAToolkit_INCLUDE_DIRS})
@@ -44,8 +86,8 @@ set(SINTER_PASSES_SOURCES
 
 set(SINTER_CODEGEN_SOURCES
     src/codegen/cuda_kernel_gen.cpp
-    src/codegen/cuda_launcher_gen.cpp
-    src/codegen/ptx_compiler.cpp
+    src/codegen/ptx_compiler.cpp       # NVRTC-based compilation (CompiledKernel, NvrtcCompiler)
+    src/codegen/cuda_launcher_gen.cpp  # Legacy stub (to be removed later)
 )
 
 set(SINTER_AUTOTUNER_SOURCES
@@ -74,9 +116,56 @@ add_library(sinter_core
     ${SINTER_BACKEND_SOURCES}
 )
 
+# Find NVRTC library manually if CMake didn't find it
+# This is needed for conda environments where NVRTC isn't in the standard CMake search paths
+if(NOT TARGET CUDA::nvrtc)
+    # Get the directory containing nvcc to find NVRTC in the same tree
+    get_filename_component(_nvcc_dir "${CMAKE_CUDA_COMPILER}" DIRECTORY)
+    get_filename_component(_cuda_prefix "${_nvcc_dir}" DIRECTORY)
+    
+    find_library(NVRTC_LIBRARY
+        NAMES nvrtc nvrtc.12 libnvrtc.so.12
+        HINTS 
+            "${_cuda_prefix}/lib"              # Conda: $CONDA_PREFIX/lib
+            "${_cuda_prefix}/lib64"            # Some setups use lib64
+            "${CUDAToolkit_LIBRARY_DIR}"       # Standard CMake variable
+            "$ENV{CONDA_PREFIX}/lib"           # Direct conda env check
+        NO_DEFAULT_PATH
+    )
+    
+    if(NOT NVRTC_LIBRARY)
+        # Fallback to system paths
+        find_library(NVRTC_LIBRARY NAMES nvrtc)
+    endif()
+    
+    if(NVRTC_LIBRARY)
+        message(STATUS "Found NVRTC: ${NVRTC_LIBRARY}")
+        add_library(CUDA::nvrtc SHARED IMPORTED)
+        set_target_properties(CUDA::nvrtc PROPERTIES
+            IMPORTED_LOCATION "${NVRTC_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${CUDAToolkit_INCLUDE_DIRS}"
+        )
+    else()
+        message(WARNING "NVRTC not found - JIT compilation will not work")
+        message(STATUS "  Looked in: ${_cuda_prefix}/lib, ${CUDAToolkit_LIBRARY_DIR}")
+    endif()
+endif()
+
+# Link against CUDA libraries
+# - CUDA::cuda_driver: Low-level driver API (cuModuleLoad, cuLaunchKernel, etc.)
+# - CUDA::nvrtc: Runtime compilation (nvrtcCompileProgram, etc.)
+# - CUDA::cudart: Runtime API (cudaMalloc, etc.)
 target_link_libraries(sinter_core
-    CUDA::toolkit
+    CUDA::cuda_driver
+    CUDA::cudart
 )
+
+# Link NVRTC if available
+if(TARGET CUDA::nvrtc)
+    target_link_libraries(sinter_core CUDA::nvrtc)
+else()
+    target_compile_definitions(sinter_core PRIVATE SINTER_NO_NVRTC)
+endif()
 
 # Main executable
 add_executable(sinter_compiler src/main.cpp)
@@ -111,7 +200,7 @@ if(ENABLE_TESTS)
     gtest_discover_tests(passes_test)
 
     add_executable(codegen_test test/unit/codegen_test.cpp)
-    target_link_libraries(codegen_test PRIVATE sinter_core GTest::gtest_main)
+    target_link_libraries(codegen_test PRIVATE sinter_core GTest::gtest_main CUDA::cudart)
     gtest_discover_tests(codegen_test)
 
     add_executable(autotuner_test test/unit/autotuner_test.cpp)
@@ -134,6 +223,19 @@ if(ENABLE_TESTS)
     # Benchmark executable
     add_executable(benchmark_suite test/integration/benchmark_suite.cpp)
     target_link_libraries(benchmark_suite sinter_core)
+    
+    # LibTorch sanity test (only if LibTorch is available)
+    if(SINTER_HAS_LIBTORCH)
+        add_executable(libtorch_sanity_test test/integration/libtorch_sanity_test.cpp)
+        target_link_libraries(libtorch_sanity_test ${TORCH_LIBRARIES})
+        target_include_directories(libtorch_sanity_test PRIVATE ${TORCH_INCLUDE_DIRS})
+        
+        # LibTorch requires these compile definitions
+        target_compile_definitions(libtorch_sanity_test PRIVATE -D_GLIBCXX_USE_CXX11_ABI=1)
+        
+        # Add to CTest
+        add_test(NAME LibTorchSanityTest COMMAND libtorch_sanity_test)
+    endif()
 endif()
 
 # Compiler flags
