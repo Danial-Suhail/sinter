@@ -315,7 +315,7 @@ TEST(ValidatorTest, ValidateSimpleGraph) {
 TEST(ValidatorTest, ValidateMatMulShapeMismatch) {
     Graph g;
     Op op0(0, OpType::Input, {}, Shape({16, 16}));
-    Op op1(1, OpType::Input, {}, Shape({32, 32}));  // K dimension mismatch
+    Op op1(1, OpType::Input, {}, Shape({32, 32})); // K dimension mismatch
     Op op2(2, OpType::MatMul, {0, 1}, Shape({16, 32}));
 
     g.add_op(op0);
@@ -329,7 +329,7 @@ TEST(ValidatorTest, ValidateMatMulShapeMismatch) {
 
 TEST(ValidatorTest, ValidateMatMulInvalidDims) {
     Graph g;
-    Op op0(0, OpType::Input, {}, Shape({16}));  // Not a matrix
+    Op op0(0, OpType::Input, {}, Shape({16})); // Not a matrix
     Op op1(1, OpType::Input, {}, Shape({16, 16}));
     Op op2(2, OpType::MatMul, {0, 1}, Shape({16, 16}));
 
