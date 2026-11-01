@@ -197,6 +197,7 @@ namespace sinter {
          */
         std::vector<size_t> get_op_ids() const {
             std::vector<size_t> ids;
+            ids.reserve(ops.size());
             for (const auto& p : ops) {
                 ids.push_back(p.first);
             }

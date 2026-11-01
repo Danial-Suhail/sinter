@@ -73,7 +73,7 @@ void NvrtcCompiler::initialize_cuda() {
     // Get device name for logging
     char device_name[256];
     CUDA_DRIVER_CHECK(cuDeviceGetName(device_name, sizeof(device_name), device));
-    std::cout << "[Sinter] CUDA initialized on: " << device_name << std::endl;
+    std::cout << "[Sinter] CUDA initialized on: " << device_name << '\n';
 
     cuda_initialized_ = true;
 }
@@ -99,6 +99,7 @@ std::string NvrtcCompiler::compile_to_ptx(
 
     // Prepare compile options
     std::vector<const char*> options;
+    options.reserve(compile_options.size() + 3);  // + the 3 default flags below
     for (const auto& opt : compile_options) {
         options.push_back(opt.c_str());
     }
@@ -133,7 +134,7 @@ std::string NvrtcCompiler::compile_to_ptx(
             nvrtcDestroyProgram(&program);
             throw std::runtime_error("NVRTC compile failed:\n" + log);
         }
-        std::cerr << "[Sinter] NVRTC warnings:\n" << log << std::endl;
+        std::cerr << "[Sinter] NVRTC warnings:\n" << log << '\n';
     } else if (compile_result != NVRTC_SUCCESS) {
         nvrtcDestroyProgram(&program);
         throw std::runtime_error("NVRTC compilation failed with no log");

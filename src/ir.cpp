@@ -90,7 +90,7 @@ namespace sinter {
                 case OpType::LayerNorm:
                 case OpType::GELU:
                 case OpType::ReLU: {
-                    if (op.input_ids.size() < 1) return false;
+                    if (op.input_ids.empty()) return false;
                     break;
                 }
                 default:
@@ -198,8 +198,8 @@ namespace sinter {
                 std::istringstream shape_iss(shape_str);
                 std::string dim_str;
                 while (std::getline(shape_iss, dim_str, ',')) {
-                    dim_str.erase(0, dim_str.find_first_not_of(" "));
-                    dim_str.erase(dim_str.find_last_not_of(" ") + 1);
+                    dim_str.erase(0, dim_str.find_first_not_of(' '));
+                    dim_str.erase(dim_str.find_last_not_of(' ') + 1);
                     if (!dim_str.empty()) {
                         dims.push_back(std::stoul(dim_str));
                     }
@@ -219,8 +219,8 @@ namespace sinter {
                 std::istringstream inputs_iss(inputs_str);
                 std::string id_str;
                 while (std::getline(inputs_iss, id_str, ',')) {
-                    id_str.erase(0, id_str.find_first_not_of(" "));
-                    id_str.erase(id_str.find_last_not_of(" ") + 1);
+                    id_str.erase(0, id_str.find_first_not_of(' '));
+                    id_str.erase(id_str.find_last_not_of(' ') + 1);
                     if (!id_str.empty()) {
                         current_inputs.push_back(std::stoul(id_str));
                     }
@@ -234,10 +234,10 @@ namespace sinter {
                 if (eq_pos == std::string::npos) continue;
                 std::string key = line.substr(line.find(':') + 1, eq_pos - line.find(':') - 1);
                 std::string value = line.substr(eq_pos + 1);
-                key.erase(0, key.find_first_not_of(" "));
-                key.erase(key.find_last_not_of(" ") + 1);
-                value.erase(0, value.find_first_not_of(" "));
-                value.erase(value.find_last_not_of(" ") + 1);
+                key.erase(0, key.find_first_not_of(' '));
+                key.erase(key.find_last_not_of(' ') + 1);
+                value.erase(0, value.find_first_not_of(' '));
+                value.erase(value.find_last_not_of(' ') + 1);
                 current_attrs.emplace_back(key, value);
                 continue;
             }

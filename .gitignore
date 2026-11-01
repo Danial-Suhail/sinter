@@ -39,6 +39,5 @@ env/
 coverage/
 
 # Misc
-.clang-format
 compile_commands.json
 .tags

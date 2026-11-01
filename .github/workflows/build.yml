@@ -45,8 +45,8 @@ jobs:
 
       - name: Check formatting (clang-format)
         run: |
-          apt-get update
-          apt-get install -y clang-format
-          find include src test -name "*.h" -o -name "*.cpp" | xargs clang-format -i
-          git diff --exit-code || (echo "Code formatting issues detected"; exit 1)
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+          # TODO: drop continue-on-error once the tree has been formatted once
+          find include src test \( -name "*.h" -o -name "*.cpp" \) | xargs clang-format --dry-run --Werror
         continue-on-error: true
